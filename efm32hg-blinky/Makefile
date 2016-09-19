@@ -68,6 +68,7 @@ LFLAGS = -mcpu=cortex-m0plus \
 				 -lgcc \
 				 -lc_nano \
 				 -lnosys \
+				 -Wl,--no-wchar-size-warning \
 				 -Wl,--end-group
 
 

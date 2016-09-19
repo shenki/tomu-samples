@@ -21,6 +21,7 @@
 #include "em_device.h"
 #include "em_emu.h"
 #include "em_gpio.h"
+#include "em_leuart.h"
 
 // The uptime of this application in milliseconds, maintained by the SysTick
 // timer.
@@ -41,10 +42,26 @@ void SpinDelay(uint32_t millis) {
   while (uptime_millis < sleep_until);
 }
 
+static void leuart_putc(char c) {
+	LEUART0->TXDATA = c;
+}
+
+static void leuart_puts(char *s) {
+	while (*s)
+		leuart_putc(*s++);
+}
+
 int main() {
   // Runs the Silicon Labs chip initialisation stuff, that also deals with
   // errata (implements workarounds, etc).
   CHIP_Init();
+
+  LEUART_Init_TypeDef leuart_init = LEUART_INIT_DEFAULT;
+  CMU_ClockEnable(cmuClock_CORELE, true);
+  CMU_ClockEnable(cmuClock_LEUART0, true);
+  LEUART_Init(LEUART0, &leuart_init);
+
+  leuart_puts("Hello, World!\n");
 
   // Switch on the clock for GPIO. Even though there's no immediately obvious
   // timing stuff going on beyond the SysTick below, it still needs to be
@@ -55,8 +72,11 @@ int main() {
   // ref: http://community.silabs.com/t5/Official-Blog-of-Silicon-Labs/Chapter-5-MCU-Clocking-Part-2-The-SysTick-Interrupt/ba-p/145297
   if (SysTick_Config(CMU_ClockFreqGet(cmuClock_CORE) / 1000)) {
     // Something went wrong.
+    leuart_puts("Something went wrong\n");
     while (1);
   }
+
+  leuart_puts("SysTick_Config done\n");
 
   // Set up two pins with the GPIO controller and configure them to be open
   // drain:
@@ -65,10 +85,15 @@ int main() {
   GPIO_PinModeSet(gpioPortA, 0, gpioModeWiredAnd, 0);
   GPIO_PinModeSet(gpioPortB, 7, gpioModeWiredAnd, 0);
 
+  leuart_puts("GPIO_PinModeSet done\n");
+
   // Enable the capacitive touch sensor. Remember, this consumes TIMER0 and
   // TIMER1, so those are off-limits to us.
   CAPSENSE_Init();
 
+  leuart_puts("CAPSENSE_Init done\n");
+
+  leuart_puts("Entering blink loop...\n");
   // Blink infinitely, in an aviation-like pattern.
   while (1) {
     // Clear the PA0 bit, allowing the FET to sink to ground and thus lighting
